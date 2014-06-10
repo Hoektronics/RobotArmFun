@@ -1,13 +1,49 @@
 #include <SPI.h>
-#include "AS5048.h"
 
-AS5048 Sen1(8);
+#include "AS5048.h"
+#include "DCMotor.h"
+#include "PID_v1.h"
+#include "ServoMotor.h"
+
+//our encoder
+AS5048 encoder(8);
+
+//Define the aggressive and conservative Tuning Parameters
+double consKp=1.5, consKi=0.004, consKd=0.050;
+double Setpoint, Input, Output;
+PID pid(consKp, consKi, consKd, DIRECT);
+
+//our motor
+byte pin_a = 3;
+byte pin_b = 4;
+DCMotor motor(pin_a, pin_b);
+
+//our servo controller
+ServoMotor servo(pid, encoder, motor, Serial);
 
 void setup()
 {
   Serial.begin(57600);
  
-  check_encoder(Sen1);
+  check_encoder(encoder);  
+}
+
+void loop()
+{   
+  //look for a set point.
+  while (Serial.available() > 0)
+  {
+    int32_t target = Serial.parseInt();
+    target = constrain(target, 0, 16383);
+
+    servo.setTarget(target);
+        
+    if (Serial.read() == '\n')
+      break;
+  }
+  
+  //servo magic go!
+  servo.update();
 }
 
 void check_encoder(AS5048 enc)
@@ -30,22 +66,3 @@ void check_encoder(AS5048 enc)
   Serial.print("Comp Low: ");
   Serial.println(comp_low);
 }
-
-void loop()
-{
-  int angle = Sen1.getAngle();
-  float dec_angle = ((float)angle / 16383.0) * 360.0;
-  Serial.print("A: ");
-  Serial.print(dec_angle, 2);  
-  
-  Serial.print(" D: ");
-  Serial.print(angle);  
-
-  //Serial.print(" M: ");
-  //Serial.print(Sen1.getMagnitude());  
-  
-  Serial.println();
-  delay(100);
-}
-
-
