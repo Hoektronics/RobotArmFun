@@ -31,12 +31,15 @@ ServoMotor::ServoMotor(PID & pid, AS5048 & encoder, DCMotor & motor, Print & pri
   printer = &print; //operate on the adress of print
 
   _absolutePosition = 0;
-  
+  _lastPosition = _encoder.getAngle();
+
+  setTarget(0);
+    
   //default everything to where we are now.
-  _pid.LinkVars(&_PID_input, &_PID_setpoint, &_PID_output);
+  _PID_input = _PID_setpoint = 0;   
+  _pid.LinkVars(&_PID_input, &_PID_output, &_PID_setpoint);
   _pid.SetMode(AUTOMATIC);
-  _pid.SetSampleTime(10);
-  _PID_input = _PID_setpoint = _target = _lastPosition = _encoder.getAngle();  
+  _pid.SetSampleTime(1);
   _pid.Compute();
 }
 
@@ -55,19 +58,18 @@ int32_t ServoMotor::getTarget(void)
 void ServoMotor::setPosition(int32_t position)
 {
   _absolutePosition = position;
-  
-  //updatePID?
 }
 
 void ServoMotor::setTarget(int32_t target)
 {
-  _target = _PID_setpoint = target;
+  _target = target;
+  _PID_setpoint = target;
 }
 
 void ServoMotor::update(void)
 {
   //get our latest absolute position
-  int32_t delta = updatePosition();
+  int32_t movement_delta = updatePosition();
   
   //what is our current input
   _PID_input = _absolutePosition;
@@ -78,30 +80,35 @@ void ServoMotor::update(void)
   printer->print(" T: ");
   printer->print(_target);
   
-  //PID goes up or down...
-  if (delta >= 0)
-    _pid.SetControllerDirection(DIRECT);
-  else if(delta <= 0)
-    _pid.SetControllerDirection(REVERSE);
+  //where are we going?
+  int32_t target_delta = _target - _absolutePosition;
   
-  //do our PID here.
-  _pid.Compute();
-
   //is the delta even worth worrying over?
-  if (abs(delta) > 5)
+  if (abs(target_delta) > 5)
   {
+    //PID goes up or down...
+    if (target_delta >= 0)
+      _pid.SetControllerDirection(DIRECT);
+    else
+      _pid.SetControllerDirection(REVERSE);
     
-//    Serial.print(" In: ");
-//    Serial.print(Input);
-//  
-//    Serial.print(" Set: ");
-//    Serial.print(Setpoint);
-//  
+    //do our PID here.
+    _pid.Compute();
+
+    printer->print(" D: ");
+    printer->print(target_delta);
+    
+    printer->print(" In: ");
+    printer->print(_PID_input);
+  
+    printer->print(" Set: ");
+    printer->print(_PID_setpoint);
+  
     printer->print(" Out: ");
     printer->print(_PID_output);
 
     //okay, lets run the motors.
-    if (delta > 0)
+    if (target_delta > 0)
       _motor.setMotor(1, _PID_output);
     else
       _motor.setMotor(0, _PID_output);
@@ -109,7 +116,9 @@ void ServoMotor::update(void)
   else
   {
       _motor.setMotor(0, 0);
-  } 
+  }
+  
+  printer->println();
 }
 
 int32_t ServoMotor::updatePosition(void)
@@ -117,7 +126,7 @@ int32_t ServoMotor::updatePosition(void)
   int32_t newPosition = _encoder.getAngle();
   int32_t delta = 0;
   uint8_t dir = 0;
-
+  
   //which direction did it move?
   if (_lastPosition > newPosition)
   {
@@ -130,9 +139,12 @@ int32_t ServoMotor::updatePosition(void)
     delta = newPosition - _lastPosition;
   }
   
-  printer->print(" D: ");
-  printer->print(delta);
-
+//  printer->print(" R: ");
+//  printer->print(newPosition);
+//
+//  printer->print(" D: ");
+//  printer->print(delta);
+//
   //did it loop around?
   if (delta >= 8192)
   {
@@ -146,13 +158,13 @@ int32_t ServoMotor::updatePosition(void)
   //okay, add our delta to our absolute position now.
   if (dir)
   {
-    _absolutePosition = _absolutePosition - delta;
-    return -delta;
+    _absolutePosition = _absolutePosition + delta;
+    return delta;
   }
   else
   {
-    _absolutePosition = _absolutePosition + delta;
-    return delta;
+    _absolutePosition = _absolutePosition - delta;
+    return -delta;
   }
 }
 

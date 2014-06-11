@@ -48,15 +48,15 @@ void DCMotor::setMotor(uint8_t dir, uint8_t pwm)
     
   if(dir)
   {
-    digitalWrite(_right, LOW);    
-    digitalWrite(_left, LOW);    
-    analogWrite(_right, pwm);
-  }
-  else
-  {
     digitalWrite(_left, LOW);    
     digitalWrite(_right, LOW);    
     analogWrite(_left, pwm);
+  }
+  else
+  {
+    digitalWrite(_right, LOW);    
+    digitalWrite(_left, LOW);    
+    analogWrite(_right, pwm);
   }
 }
 

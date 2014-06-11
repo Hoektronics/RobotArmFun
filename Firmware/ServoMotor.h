@@ -56,8 +56,8 @@ private:
   int32_t _absolutePosition;
   int32_t _lastPosition;
   
-  double _PID_setpoint;
   double _PID_input;
+  double _PID_setpoint;
   double _PID_output;
   
   PID & _pid;

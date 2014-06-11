@@ -60,8 +60,8 @@ PID::PID(double Kp, double Ki, double Kd, int ControllerDirection)
  ***************************************************************************/
 void PID::LinkVars(double* Input, double* Output, double* Setpoint)
 {	
-    myOutput = Output;
     myInput = Input;
+    myOutput = Output;
     mySetpoint = Setpoint;
 }
  
